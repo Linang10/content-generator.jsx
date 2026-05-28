@@ -1,0 +1,585 @@
+import { useState, useRef, useEffect } from "react";
+
+const CONTENT_TYPES = [
+  { id: "caption", label: "Caption Media Sosial", icon: "✦", desc: "Instagram, Twitter, TikTok" },
+  { id: "blog", label: "Artikel Blog", icon: "◈", desc: "SEO-friendly & informatif" },
+  { id: "email", label: "Email Marketing", icon: "◉", desc: "Subject + body yang menarik" },
+  { id: "tagline", label: "Tagline & Slogan", icon: "◆", desc: "Singkat, padat, berkesan" },
+  { id: "product", label: "Deskripsi Produk", icon: "◇", desc: "Copywriting e-commerce" },
+  { id: "ad", label: "Iklan Digital", icon: "▣", desc: "Google Ads, Meta Ads" },
+];
+
+const TONES = ["Profesional", "Kasual", "Lucu", "Inspiratif", "Persuasif", "Formal"];
+const LANGS = ["Bahasa Indonesia", "English", "Campur (Inggris-Indonesia)"];
+
+function useTypewriter(text, speed = 18) {
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    setDisplayed("");
+    setDone(false);
+    if (!text) return;
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) { clearInterval(id); setDone(true); }
+    }, speed);
+    return () => clearInterval(id);
+  }, [text]);
+  return { displayed, done };
+}
+
+export default function ContentGenerator() {
+  const [selectedType, setSelectedType] = useState("caption");
+  const [topic, setTopic] = useState("");
+  const [tone, setTone] = useState("Profesional");
+  const [lang, setLang] = useState("Bahasa Indonesia");
+  const [keywords, setKeywords] = useState("");
+  const [result, setResult] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const resultRef = useRef(null);
+  const { displayed } = useTypewriter(result);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const generate = async () => {
+    if (!topic.trim()) { setError("Masukkan topik atau produk terlebih dahulu."); return; }
+    setError(""); setResult(""); setLoading(true);
+    const typeLabel = CONTENT_TYPES.find((t) => t.id === selectedType)?.label;
+    const prompt = `Kamu adalah copywriter profesional berbahasa ${lang}.\n\nBuat ${typeLabel} dengan ketentuan berikut:\n- Topik/Produk: ${topic}\n- Nada: ${tone}\n- Bahasa: ${lang}\n${keywords ? `- Kata kunci: ${keywords}` : ""}\n\nFormat output harus bersih, siap pakai, dan langsung bisa digunakan. Tidak perlu penjelasan, langsung hasilkan kontennya saja.`;
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
+      });
+      const data = await response.json();
+      const text = data.content?.map((b) => b.text || "").join("") || "";
+      setResult(text.trim());
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 100);
+    } catch { setError("Gagal menghubungi AI. Coba lagi."); }
+    finally { setLoading(false); }
+  };
+
+  const copyText = () => {
+    navigator.clipboard.writeText(result);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="root">
+      {/* Animated grid background */}
+      <div className="grid-bg" />
+      {/* Scanline overlay */}
+      <div className="scanlines" />
+      {/* Glowing orbs */}
+      <div className="orb orb1" />
+      <div className="orb orb2" />
+
+      <div className={`container ${mounted ? "mounted" : ""}`}>
+
+        {/* Header */}
+        <header className="header">
+          <div className="badge">
+            <span className="badge-dot" />
+            SISTEM AI AKTIF
+            <span className="badge-dot" />
+          </div>
+          <h1 className="title">
+            <span className="title-line1">GENERATOR</span>
+            <span className="title-line2">KONTEN</span>
+            <span className="title-line3">OTOMATIS</span>
+          </h1>
+          <p className="subtitle">Hasilkan konten berkualitas tinggi dalam hitungan detik</p>
+          <div className="divider-line">
+            <span className="divider-diamond">◆</span>
+          </div>
+        </header>
+
+        {/* Content Type */}
+        <section className="section">
+          <SectionLabel>// 01 — PILIH JENIS KONTEN</SectionLabel>
+          <div className="type-grid">
+            {CONTENT_TYPES.map((t, i) => (
+              <button
+                key={t.id}
+                className={`type-card ${selectedType === t.id ? "active" : ""}`}
+                onClick={() => setSelectedType(t.id)}
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <div className="type-icon">{t.icon}</div>
+                <div className="type-name">{t.label}</div>
+                <div className="type-desc">{t.desc}</div>
+                <div className="card-corner tl" />
+                <div className="card-corner tr" />
+                <div className="card-corner bl" />
+                <div className="card-corner br" />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Topic input */}
+        <section className="section">
+          <SectionLabel>// 02 — TOPIK / PRODUK / BRAND</SectionLabel>
+          <div className="input-wrap">
+            <textarea
+              className="input-field"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="Contoh: Kopi susu gula aren premium, cocok untuk anak muda yang dinamis..."
+              rows={3}
+            />
+            <div className="input-glow" />
+          </div>
+        </section>
+
+        {/* Tone & Language */}
+        <div className="two-col">
+          <section className="section">
+            <SectionLabel>// 03 — NADA TULISAN</SectionLabel>
+            <div className="pill-group">
+              {TONES.map((t) => (
+                <button key={t} className={`pill ${tone === t ? "active" : ""}`} onClick={() => setTone(t)}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="section">
+            <SectionLabel>// 04 — BAHASA OUTPUT</SectionLabel>
+            <div className="lang-group">
+              {LANGS.map((l) => (
+                <button key={l} className={`lang-btn ${lang === l ? "active" : ""}`} onClick={() => setLang(l)}>
+                  <span className="lang-radio">{lang === l ? "◉" : "○"}</span>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Keywords */}
+        <section className="section">
+          <SectionLabel>// 05 — KATA KUNCI <span className="optional">(opsional)</span></SectionLabel>
+          <div className="input-wrap">
+            <input
+              className="input-field single"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              placeholder="Contoh: promo, diskon, limited edition, gratis ongkir..."
+            />
+          </div>
+        </section>
+
+        {error && <div className="error-box">⚠ {error}</div>}
+
+        {/* Generate */}
+        <button className={`gen-btn ${loading ? "loading" : ""}`} onClick={generate} disabled={loading}>
+          <span className="gen-btn-bg" />
+          <span className="gen-btn-content">
+            {loading ? (
+              <>
+                <LoadingDots />
+                <span>MEMPROSES...</span>
+              </>
+            ) : (
+              <>
+                <span className="gen-icon">◈</span>
+                <span>GENERATE KONTEN</span>
+                <span className="gen-arrow">→</span>
+              </>
+            )}
+          </span>
+        </button>
+
+        {/* Result */}
+        {result && (
+          <div ref={resultRef} className="result-wrap">
+            <div className="result-header">
+              <SectionLabel style={{ margin: 0 }}>// OUTPUT</SectionLabel>
+              <div className="result-meta">
+                <span className="char-count">{result.length} karakter</span>
+                <button className={`copy-btn ${copied ? "copied" : ""}`} onClick={copyText}>
+                  {copied ? "✓ TERSALIN" : "⎘ SALIN"}
+                </button>
+              </div>
+            </div>
+            <div className="result-box">
+              <div className="result-corner-tl">┌</div>
+              <div className="result-corner-tr">┐</div>
+              <div className="result-corner-bl">└</div>
+              <div className="result-corner-br">┘</div>
+              <div className="result-text">{displayed}<span className="cursor">▌</span></div>
+            </div>
+            <button className="regen-btn" onClick={generate}>↻ GENERATE ULANG</button>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .root {
+          min-height: 100vh;
+          background: #000;
+          font-family: 'Space Mono', monospace;
+          color: #fff;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        /* Animated grid */
+        .grid-bg {
+          position: fixed; inset: 0; z-index: 0;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+          background-size: 40px 40px;
+          animation: gridMove 20s linear infinite;
+        }
+        @keyframes gridMove {
+          0% { background-position: 0 0; }
+          100% { background-position: 40px 40px; }
+        }
+
+        /* Scanlines */
+        .scanlines {
+          position: fixed; inset: 0; z-index: 0; pointer-events: none;
+          background: repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2px,
+            rgba(0,0,0,0.15) 2px,
+            rgba(0,0,0,0.15) 4px
+          );
+        }
+
+        /* Orbs */
+        .orb {
+          position: fixed; border-radius: 50%; filter: blur(80px);
+          pointer-events: none; z-index: 0;
+          animation: orbFloat 8s ease-in-out infinite;
+        }
+        .orb1 {
+          width: 400px; height: 400px; top: -100px; left: -100px;
+          background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
+        }
+        .orb2 {
+          width: 300px; height: 300px; bottom: -80px; right: -80px;
+          background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%);
+          animation-delay: -4s; animation-direction: reverse;
+        }
+        @keyframes orbFloat {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50% { transform: translate(30px, 20px) scale(1.05); }
+        }
+
+        /* Container */
+        .container {
+          position: relative; z-index: 1;
+          max-width: 800px; margin: 0 auto;
+          padding: 56px 24px 100px;
+          opacity: 0; transform: translateY(24px);
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .container.mounted { opacity: 1; transform: translateY(0); }
+
+        /* Header */
+        .header { text-align: center; margin-bottom: 64px; }
+
+        .badge {
+          display: inline-flex; align-items: center; gap: 8px;
+          border: 1px solid rgba(255,255,255,0.2);
+          padding: 4px 16px; margin-bottom: 28px;
+          font-size: 10px; letter-spacing: 3px;
+          color: rgba(255,255,255,0.5);
+          animation: badgePulse 2s ease-in-out infinite;
+        }
+        @keyframes badgePulse {
+          0%,100% { border-color: rgba(255,255,255,0.2); }
+          50% { border-color: rgba(255,255,255,0.5); }
+        }
+        .badge-dot {
+          width: 5px; height: 5px; background: #fff; border-radius: 50%;
+          animation: dotBlink 1.2s ease-in-out infinite;
+        }
+        .badge-dot:last-child { animation-delay: 0.6s; }
+        @keyframes dotBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+        .title { line-height: 0.9; margin-bottom: 20px; }
+        .title-line1, .title-line2, .title-line3 {
+          display: block;
+          font-family: 'Bebas Neue', sans-serif;
+          letter-spacing: 6px;
+          animation: titleReveal 0.8s ease both;
+        }
+        .title-line1 { font-size: clamp(52px, 10vw, 96px); color: #fff; animation-delay: 0.1s; }
+        .title-line2 {
+          font-size: clamp(52px, 10vw, 96px);
+          color: transparent;
+          -webkit-text-stroke: 1px rgba(255,255,255,0.7);
+          animation-delay: 0.2s;
+        }
+        .title-line3 { font-size: clamp(52px, 10vw, 96px); color: rgba(255,255,255,0.2); animation-delay: 0.3s; }
+        @keyframes titleReveal {
+          from { opacity: 0; transform: translateY(30px) skewY(3deg); }
+          to { opacity: 1; transform: translateY(0) skewY(0); }
+        }
+
+        .subtitle {
+          color: rgba(255,255,255,0.4); font-size: 12px; letter-spacing: 1.5px;
+          margin-bottom: 28px; animation: fadeUp 0.8s 0.5s ease both;
+        }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        .divider-line {
+          display: flex; align-items: center; gap: 12px;
+          animation: fadeUp 0.8s 0.6s ease both;
+        }
+        .divider-line::before, .divider-line::after {
+          content: ''; flex: 1; height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        }
+        .divider-diamond { color: rgba(255,255,255,0.6); font-size: 10px; }
+
+        /* Sections */
+        .section { margin-bottom: 28px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 0; }
+
+        /* Section label */
+        .section-label {
+          font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.4);
+          margin-bottom: 12px; font-family: 'Space Mono', monospace;
+        }
+        .optional { color: rgba(255,255,255,0.2); }
+
+        /* Type cards */
+        .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+
+        .type-card {
+          position: relative; background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.08);
+          padding: 16px; cursor: pointer; text-align: left;
+          transition: all 0.25s ease;
+          animation: cardReveal 0.5s ease both;
+          overflow: hidden;
+        }
+        .type-card::before {
+          content: ''; position: absolute; inset: 0;
+          background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 60%);
+          opacity: 0; transition: opacity 0.3s;
+        }
+        .type-card:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.06); transform: translateY(-2px); }
+        .type-card:hover::before { opacity: 1; }
+        .type-card.active {
+          background: rgba(255,255,255,0.1);
+          border-color: rgba(255,255,255,0.6);
+          box-shadow: 0 0 20px rgba(255,255,255,0.08), inset 0 0 20px rgba(255,255,255,0.03);
+        }
+        @keyframes cardReveal { from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
+
+        .type-icon { font-size: 20px; margin-bottom: 6px; color: rgba(255,255,255,0.4); transition: color 0.2s; }
+        .type-card.active .type-icon { color: #fff; }
+        .type-name { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 3px; color: rgba(255,255,255,0.8); }
+        .type-desc { font-size: 10px; color: rgba(255,255,255,0.3); }
+
+        /* Corner decorations */
+        .card-corner { position: absolute; width: 6px; height: 6px; }
+        .card-corner.tl { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; border-color: transparent; transition: border-color 0.2s; }
+        .card-corner.tr { top: -1px; right: -1px; border-top: 2px solid; border-right: 2px solid; border-color: transparent; transition: border-color 0.2s; }
+        .card-corner.bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; border-color: transparent; transition: border-color 0.2s; }
+        .card-corner.br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; border-color: transparent; transition: border-color 0.2s; }
+        .type-card.active .card-corner { border-color: #fff !important; }
+
+        /* Inputs */
+        .input-wrap { position: relative; }
+        .input-field {
+          width: 100%; background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.12);
+          padding: 14px 16px; color: #fff; font-size: 13px;
+          font-family: 'Space Mono', monospace;
+          outline: none; transition: all 0.3s; resize: vertical;
+          line-height: 1.6;
+        }
+        .input-field.single { resize: none; }
+        .input-field::placeholder { color: rgba(255,255,255,0.2); }
+        .input-field:focus {
+          border-color: rgba(255,255,255,0.5);
+          background: rgba(255,255,255,0.07);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,0.04);
+        }
+
+        /* Pills */
+        .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pill {
+          padding: 5px 12px; font-size: 11px; letter-spacing: 0.5px;
+          background: transparent; border: 1px solid rgba(255,255,255,0.15);
+          cursor: pointer; color: rgba(255,255,255,0.4);
+          font-family: 'Space Mono', monospace;
+          transition: all 0.2s;
+        }
+        .pill:hover { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.7); }
+        .pill.active {
+          background: #fff; color: #000; border-color: #fff;
+          font-weight: 700;
+          box-shadow: 0 0 12px rgba(255,255,255,0.3);
+        }
+
+        /* Lang buttons */
+        .lang-group { display: flex; flex-direction: column; gap: 8px; }
+        .lang-btn {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 14px; font-size: 11px; text-align: left;
+          background: transparent; border: 1px solid rgba(255,255,255,0.1);
+          cursor: pointer; color: rgba(255,255,255,0.4);
+          font-family: 'Space Mono', monospace;
+          transition: all 0.2s; letter-spacing: 0.3px;
+        }
+        .lang-btn:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); }
+        .lang-btn.active { border-color: rgba(255,255,255,0.5); color: #fff; background: rgba(255,255,255,0.06); }
+        .lang-radio { font-size: 14px; }
+
+        /* Error */
+        .error-box {
+          background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.3);
+          padding: 12px 16px; font-size: 12px; color: rgba(255,120,120,0.9);
+          margin-bottom: 20px; letter-spacing: 0.5px;
+          animation: shake 0.3s ease;
+        }
+        @keyframes shake {
+          0%,100% { transform: translateX(0); }
+          25% { transform: translateX(-6px); }
+          75% { transform: translateX(6px); }
+        }
+
+        /* Generate button */
+        .gen-btn {
+          width: 100%; padding: 20px;
+          background: transparent; border: 1px solid rgba(255,255,255,0.5);
+          cursor: pointer; position: relative; overflow: hidden;
+          font-family: 'Space Mono', monospace;
+          transition: all 0.3s;
+          margin-bottom: 0;
+        }
+        .gen-btn:hover { border-color: #fff; box-shadow: 0 0 30px rgba(255,255,255,0.1); }
+        .gen-btn:hover .gen-btn-bg { transform: translateX(0); }
+        .gen-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .gen-btn-bg {
+          position: absolute; inset: 0; background: rgba(255,255,255,0.06);
+          transform: translateX(-100%); transition: transform 0.4s ease;
+        }
+        .gen-btn-content {
+          position: relative; display: flex; align-items: center;
+          justify-content: center; gap: 12px;
+          font-size: 13px; letter-spacing: 3px; color: #fff; font-weight: 700;
+        }
+        .gen-icon { font-size: 16px; animation: spinSlow 4s linear infinite; }
+        @keyframes spinSlow { to { transform: rotate(360deg); } }
+        .gen-arrow { transition: transform 0.2s; }
+        .gen-btn:hover .gen-arrow { transform: translateX(4px); }
+
+        /* Loading dots */
+        .loading-dots { display: flex; gap: 4px; align-items: center; }
+        .loading-dots span {
+          width: 5px; height: 5px; background: #fff; border-radius: 50%;
+          animation: dotWave 1s ease-in-out infinite;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes dotWave {
+          0%,100% { transform: scaleY(1); opacity: 0.5; }
+          50% { transform: scaleY(1.8); opacity: 1; }
+        }
+
+        /* Result */
+        .result-wrap { margin-top: 48px; animation: fadeUp 0.5s ease both; }
+        .result-header {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-bottom: 12px;
+        }
+        .result-meta { display: flex; align-items: center; gap: 16px; }
+        .char-count { font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 1px; }
+
+        .copy-btn {
+          padding: 6px 14px; font-size: 10px; letter-spacing: 1.5px;
+          background: transparent; border: 1px solid rgba(255,255,255,0.2);
+          cursor: pointer; color: rgba(255,255,255,0.4);
+          font-family: 'Space Mono', monospace;
+          transition: all 0.2s;
+        }
+        .copy-btn:hover { border-color: rgba(255,255,255,0.5); color: rgba(255,255,255,0.8); }
+        .copy-btn.copied { border-color: rgba(255,255,255,0.6); color: #fff; background: rgba(255,255,255,0.1); }
+
+        .result-box {
+          position: relative; border: 1px solid rgba(255,255,255,0.2);
+          padding: 28px; background: rgba(255,255,255,0.03);
+          box-shadow: 0 0 40px rgba(255,255,255,0.03);
+          animation: resultGlow 3s ease-in-out infinite;
+        }
+        @keyframes resultGlow {
+          0%,100% { box-shadow: 0 0 20px rgba(255,255,255,0.02); }
+          50% { box-shadow: 0 0 40px rgba(255,255,255,0.06); }
+        }
+        .result-corner-tl, .result-corner-tr, .result-corner-bl, .result-corner-br {
+          position: absolute; font-size: 12px; color: rgba(255,255,255,0.5);
+          line-height: 1;
+        }
+        .result-corner-tl { top: 4px; left: 8px; }
+        .result-corner-tr { top: 4px; right: 8px; }
+        .result-corner-bl { bottom: 4px; left: 8px; }
+        .result-corner-br { bottom: 4px; right: 8px; }
+        .result-text {
+          font-size: 13px; line-height: 1.9; color: rgba(255,255,255,0.85);
+          white-space: pre-wrap; font-family: 'Space Mono', monospace;
+        }
+        .cursor {
+          display: inline-block; color: rgba(255,255,255,0.7);
+          animation: blink 0.8s step-start infinite;
+        }
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+        .regen-btn {
+          margin-top: 12px; background: transparent;
+          border: 1px solid rgba(255,255,255,0.1);
+          padding: 8px 20px; cursor: pointer;
+          color: rgba(255,255,255,0.3); font-size: 10px;
+          letter-spacing: 2px; font-family: 'Space Mono', monospace;
+          transition: all 0.2s;
+        }
+        .regen-btn:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.6); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+
+        textarea::placeholder, input::placeholder { color: rgba(255,255,255,0.2) !important; }
+
+        @media (max-width: 560px) {
+          .two-col { grid-template-columns: 1fr; }
+          .type-grid { grid-template-columns: 1fr 1fr; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function SectionLabel({ children, style }) {
+  return <div className="section-label" style={style}>{children}</div>;
+}
+
+function LoadingDots() {
+  return (
+    <div className="loading-dots">
+      <span /><span /><span />
+    </div>
+  );
+}
